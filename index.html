@@ -3,387 +3,366 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Abacus</title>
+    <title>Canvas Virtual Abacus (Final Layout)</title>
     <style>
-        /* --- CSS STYLES --- */
+        /* --- General Layout --- */
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: 20px;
-            background-color: #f4f4f9;
+            background-color: #f0f0f0;
+            user-select: none; /* Prevent text selection during drag */
         }
 
-        #abacus-container {
-            border: 5px solid #6b4e3c;
-            border-radius: 10px;
-            padding: 10px 5px;
-            background-color: #a07d6a;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            display: flex;
-            justify-content: center;
+        h1 {
+            color: #4a3424;
             margin-bottom: 20px;
         }
 
-        .rod {
-            width: 40px; /* Width of the column/rod */
-            height: 300px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 0 5px;
-            position: relative;
+        /* --- Canvas Container and Styling --- */
+        #abacusCanvas {
+            border: 10px solid #4a3424; /* Frame */
+            border-radius: 12px;
+            background-color: #6b4e3c; /* Abacus body wood color */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+            margin-bottom: 30px;
+            cursor: default;
         }
 
-        /* The central divider bar (beam) */
-        .rod::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 100%;
-            height: 15px; /* Height of the beam */
-            background-color: #4a3424;
-            z-index: 10;
-        }
-
-        .bead-section {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            padding: 5px 0;
-            position: relative;
-        }
-
-        /* The main rod line */
-        .bead-section::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background-color: #4a3424;
-            transform: translateX(-50%);
-            z-index: 5;
-        }
-
-        /* Top section for the 5-value bead (Heaven Beads) */
-        .top-section {
-            height: 35%;
-            justify-content: flex-end; /* Beads start at the top and move down */
-            align-items: center;
-        }
-
-        /* Bottom section for the 1-value beads (Earth Beads) */
-        .bottom-section {
-            height: 65%;
-            justify-content: flex-start; /* Beads start at the bottom and move up */
-            align-items: center;
-            margin-top: 15px; /* Space for the beam */
-        }
-
-        .bead {
-            width: 30px;
-            height: 30px;
-            background-color: #cc4444; /* Red beads */
-            border-radius: 50%;
-            cursor: pointer;
-            position: absolute; /* Allows for drag-and-drop movement */
-            left: 50%;
-            transform: translateX(-50%);
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
-            z-index: 20;
-            transition: background-color 0.1s; /* Smooth color change on hover/active */
-        }
-
-        .bead:hover {
-            background-color: #ff6666;
-        }
-
-        /* Styling for the heaven beads (value 5) */
-        .top-section .bead {
-            background-color: #4499cc; /* Blue beads for heaven */
-        }
-        .top-section .bead:hover {
-            background-color: #66b3ff;
-        }
-
-
+        /* --- Value Display --- */
         #value-display {
-            font-size: 2em;
-            color: #333;
+            font-size: 2.5em;
+            color: #2c1a10;
             font-weight: bold;
-            padding: 10px 20px;
-            border: 2px solid #333;
-            border-radius: 8px;
+            padding: 15px 30px;
+            border: 3px solid #2c1a10;
+            border-radius: 10px;
             background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            min-width: 300px;
+            text-align: center;
         }
-
     </style>
 </head>
 <body>
 
-    <h1>Virtual Abacus</h1>
+    <h1>Canvas Virtual Abacus (Final Layout)</h1>
 
-    <div id="abacus-container">
-        </div>
+    <canvas id="abacusCanvas"></canvas>
 
     <div id="value-display">0</div>
 
     <script>
-        // --- JAVASCRIPT LOGIC ---
+        // --- CANVAS JAVASCRIPT LOGIC ---
 
-        const numRods = 10; // Number of columns
-        const abacusContainer = document.getElementById('abacus-container');
+        const canvas = document.getElementById('abacusCanvas');
+        const ctx = canvas.getContext('2d');
         const valueDisplay = document.getElementById('value-display');
-        let rodValues = Array(numRods).fill(0); // Array to hold the value of each rod
 
-        // --- 1. RENDER ABACUS STRUCTURE ---
-        function renderAbacus() {
-            for (let i = 0; i < numRods; i++) {
-                const rod = document.createElement('div');
-                rod.className = 'rod';
-                rod.dataset.rodIndex = i; // Store the index (power of 10)
-                
-                // Top Section (Heaven Bead: value 5)
-                const topSection = document.createElement('div');
-                topSection.className = 'bead-section top-section';
-                const heavenBead = createBead(5, 'top', i, 0); // Value 5, top section, rod index, bead index 0
-                topSection.appendChild(heavenBead);
-                rod.appendChild(topSection);
+        // --- CONFIGURATION ---
+        const NUM_RODS = 10;
+        const ROD_SPACING = 50; 
+        const BEAD_RADIUS = 18;
+        const BEAD_DIAMETER = BEAD_RADIUS * 2;
+        const BEAM_HEIGHT = 18;
+        const PADDING = 5; // Padding from the frame edge
+        
+        // Calculate canvas dimensions
+        canvas.width = (NUM_RODS * ROD_SPACING) + ROD_SPACING; 
+        canvas.height = 350;
 
-                // Bottom Section (Earth Beads: value 1)
-                const bottomSection = document.createElement('div');
-                bottomSection.className = 'bead-section bottom-section';
+        const CANVAS_WIDTH = canvas.width;
+        const CANVAS_HEIGHT = canvas.height;
+
+        // --- DYNAMIC SECTION HEIGHTS (Fix for Proportional Spacing) ---
+        
+        // Height required for the 4 Earth beads + minimal top/bottom padding
+        const MIN_BOTTOM_HEIGHT = (4 * BEAD_DIAMETER) + (4 * PADDING) + (2 * PADDING);
+
+        // Height required for 1 Heaven bead + minimal top padding
+        const MIN_TOP_HEIGHT = BEAD_DIAMETER + (2 * PADDING);
+
+        // We use the entire height and dynamically calculate the beam position
+        // to maintain a better 1:4 visual balance.
+        
+        // The total height taken by all beads and spacing:
+        const TOTAL_BEAD_HEIGHT_NEEDED = MIN_TOP_HEIGHT + MIN_BOTTOM_HEIGHT + BEAM_HEIGHT;
+        
+        // Use a fixed proportion for the beam: Top section is ~1/5th, bottom ~4/5ths.
+        const TOP_SECTION_RATIO = 0.25; // 25% of space above beam, 75% below
+
+        // Y position of the beam's center line
+        const BEAM_Y = (CANVAS_HEIGHT * TOP_SECTION_RATIO); 
+
+        // Actual boundaries based on the new BEAM_Y
+        const TOP_SECTION_HEIGHT = BEAM_Y - (BEAM_HEIGHT / 2); // Top edge of the beam
+        const BOTTOM_SECTION_START_Y = BEAM_Y + (BEAM_HEIGHT / 2); // Bottom edge of the beam
+
+        // Calculate spacing based on the available space
+        const HEAVEN_BEAD_STACK_Y = TOP_SECTION_HEIGHT - BEAD_RADIUS; // Pushed: Snaps to the beam
+        const HEAVEN_BEAD_UNSTACK_Y = PADDING + BEAD_RADIUS; // Unpushed: Snaps to the top frame
+
+        const EARTH_BEAD_STACK_UNIT = (BEAD_DIAMETER + PADDING); // Spacing for stacked beads
+        const EARTH_BEAD_UNSTACK_UNIT = (BEAD_DIAMETER + PADDING); // Spacing for unstacked beads
+
+        // --- DATA STRUCTURE & CLASSES (Unchanged) ---
+        const rods = []; 
+        let isDragging = false;
+
+        class Bead {
+            constructor(x, y, section, rodIndex, beadIndex) {
+                this.x = x;
+                this.y = y;
+                this.section = section;
+                this.rodIndex = rodIndex;
+                this.beadIndex = beadIndex;
+                this.pushed = false;
+                this.value = (section === 'top' ? 5 : 1);
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, BEAD_RADIUS, 0, Math.PI * 2);
+                ctx.fillStyle = this.section === 'top' ? '#007bff' : '#dc3545';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+                ctx.fill();
+                ctx.shadowColor = 'transparent'; 
+            }
+
+            isHit(mouseX, mouseY) {
+                const distance = Math.sqrt(
+                    (mouseX - this.x) ** 2 + (mouseY - this.y) ** 2
+                );
+                return distance < BEAD_RADIUS;
+            }
+        }
+
+        // --- INITIALIZATION (Updated Y positions) ---
+        function initAbacus() {
+            for (let i = 0; i < NUM_RODS; i++) {
+                const rodX = (i * ROD_SPACING) + ROD_SPACING / 2 + ROD_SPACING / 2;
+                const rodBeads = [];
+
+                // 1. Heaven Bead (Top)
+                rodBeads.push(new Bead(rodX, HEAVEN_BEAD_UNSTACK_Y, 'top', i, 0));
+
+                // 2. Earth Beads (Bottom)
                 for (let j = 0; j < 4; j++) {
-                    // Value 1, bottom section, rod index, bead index 0-3
-                    bottomSection.appendChild(createBead(1, 'bottom', i, j)); 
+                    const initialY = CANVAS_HEIGHT - PADDING - BEAD_RADIUS - (j * EARTH_BEAD_UNSTACK_UNIT);
+                    rodBeads.push(new Bead(rodX, initialY, 'bottom', i, j));
                 }
-                rod.appendChild(bottomSection);
-
-                abacusContainer.appendChild(rod);
+                rods.push(rodBeads);
             }
-            updateTotalValue(); // Initialize display
+            recalculateAllBeads();
         }
 
-        function createBead(value, section, rodIndex, beadIndex) {
-            const bead = document.createElement('div');
-            bead.className = 'bead';
-            bead.dataset.value = value;
-            bead.dataset.section = section;
-            bead.dataset.rod = rodIndex;
-            bead.dataset.beadIndex = beadIndex;
+        // --- DRAWING (Unchanged) ---
+        function drawRod(x) {
+            ctx.fillStyle = '#a07d6a';
+            ctx.fillRect(x - 1.5, 0, 3, CANVAS_HEIGHT); 
 
-            // Initial positioning (relative to the rod)
-            if (section === 'top') {
-                // Initial position: Up (away from beam)
-                bead.style.top = '10px'; 
-            } else {
-                // Initial position: Down (away from beam)
-                // Use CSS 'top' and beadIndex for initial vertical spacing
-                bead.style.top = `${5 + (beadIndex * 35)}px`; 
-            }
-
-            // Add event listeners for drag and click
-            bead.addEventListener('mousedown', handleBeadStart);
-            bead.addEventListener('touchstart', handleBeadStart);
-            bead.addEventListener('click', handleBeadClick);
-
-            return bead;
+            ctx.fillStyle = '#f0f0f0';
+            ctx.beginPath();
+            ctx.arc(x, BEAM_Y, 4, 0, Math.PI * 2);
+            ctx.fill();
         }
 
-        // --- 2. INTERACTIVITY (CLICK/DRAG) ---
+        function drawReckoningBar() {
+            ctx.fillStyle = '#2c1a10';
+            ctx.fillRect(0, BEAM_Y - BEAM_HEIGHT / 2, CANVAS_WIDTH, BEAM_HEIGHT);
+            
+            ctx.fillStyle = '#5a3c2a';
+            ctx.fillRect(0, BEAM_Y - BEAM_HEIGHT / 2, CANVAS_WIDTH, 2);
+            ctx.fillRect(0, BEAM_Y + BEAM_HEIGHT / 2 - 2, CANVAS_WIDTH, 2);
+        }
 
-        // Variables for drag functionality
-        let activeBead = null;
-        let yOffset = 0;
+        function drawAbacus() {
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            drawReckoningBar();
 
-        function handleBeadStart(e) {
-            // Prevent text selection
+            // Draw rods
+            rods.flat().forEach(bead => drawRod(bead.x));
+            
+            // Draw all beads on top of the rods
+            rods.flat().forEach(bead => bead.draw(ctx));
+        }
+
+        // --- LOGIC: MOVEMENT & SNAPPING (Fix for Bug 1: Hit Detection) ---
+
+        let draggingBead = null;
+        let beadOffsetY = 0; 
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function handleStart(e) {
+            e.preventDefault();
+            const pos = getMousePos(e);
+            
+            // FIX: Prioritize checking beads that are visually on top.
+            // Pushed Earth beads stack near the beam, unpushed near the bottom.
+            // We check the entire flat list in reverse Y-order to catch the visually highest bead first.
+            
+            const allBeads = rods.flat().sort((a, b) => b.y - a.y); // Sort by Y (highest Y, lowest on screen, checked first)
+
+            for (const bead of allBeads) {
+                if (bead.isHit(pos.x, pos.y)) {
+                    draggingBead = bead;
+                    beadOffsetY = pos.y - bead.y; 
+                    canvas.style.cursor = 'grabbing';
+                    isDragging = false;
+                    break;
+                }
+            }
+        }
+
+        function handleMove(e) {
+            if (!draggingBead) return;
             e.preventDefault(); 
-            // Normalize event for touch/mouse
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY; 
+            isDragging = true;
             
-            activeBead = this;
-            yOffset = clientY - activeBead.getBoundingClientRect().top;
+            const pos = getMousePos(e);
+            let newY = pos.y - beadOffsetY;
 
-            activeBead.style.zIndex = 30; // Bring to front while dragging
-            
-            // Attach move and end handlers
-            document.addEventListener('mousemove', handleBeadMove);
-            document.addEventListener('mouseup', handleBeadEnd);
-            document.addEventListener('touchmove', handleBeadMove);
-            document.addEventListener('touchend', handleBeadEnd);
-        }
-
-        function handleBeadMove(e) {
-            if (!activeBead) return;
-
-            // Normalize event
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            // Calculate new top position for the bead
-            const rod = activeBead.closest('.rod');
-            const rodTop = rod.getBoundingClientRect().top;
-            const newTop = clientY - rodTop - yOffset;
-            
-            // Apply position (This visual drag is separate from the final snapping/calculation)
-            activeBead.style.top = `${newTop}px`;
-        }
-
-        function handleBeadEnd(e) {
-            if (!activeBead) return;
-
-            // Snap the bead to its final position (pushed/unpushed) and calculate value
-            snapBead(activeBead);
-
-            activeBead.style.zIndex = 20; // Reset z-index
-            activeBead = null;
-            
-            // Clean up event listeners
-            document.removeEventListener('mousemove', handleBeadMove);
-            document.removeEventListener('mouseup', handleBeadEnd);
-            document.removeEventListener('touchmove', handleBeadMove);
-            document.removeEventListener('touchend', handleBeadEnd);
-        }
-
-        // Handle a simple click (for quick toggling without drag)
-        function handleBeadClick(e) {
-            // Check if this was a drag operation (by seeing if activeBead was set)
-            if (activeBead === this) {
-                 // The 'mouseup' or 'touchend' event handled the value change via snapBead.
-                 // We only want to run the snap logic once per interaction.
-                 return;
-            }
-            
-            // If it was a quick click, still run the snap logic for toggling
-            snapBead(this);
-        }
-
-        // --- 3. LOGIC FOR SNAPPING AND VALUE CALCULATION ---
-
-        const BEAM_TOP_Y_OFFSET = 150; // Approximated Y position of the beam center (in px, relative to rod top)
-        const SNAP_THRESHOLD = 30; // Distance (in px) from the beam to snap
-        const BEAD_HEIGHT = 30;
-
-        function snapBead(bead) {
-            const rod = bead.closest('.rod');
-            const rodTop = rod.getBoundingClientRect().top;
-            const rodIndex = parseInt(bead.dataset.rod);
-            const beadSection = bead.dataset.section;
-
-            // Current bead position relative to the rod's top edge
-            const beadCenterY = bead.getBoundingClientRect().top + (BEAD_HEIGHT / 2) - rodTop;
-
-            let isPushed; // True if the bead is moved towards the beam
-            let finalTop; // The final 'top' CSS value
-
-            if (beadSection === 'top') {
-                // Heaven Bead (Value 5)
-                const distanceToBeam = Math.abs(beadCenterY - BEAM_TOP_Y_OFFSET);
-                if (distanceToBeam < SNAP_THRESHOLD) {
-                    // Pushed: Top edge of bead is just below the beam's center (pushed down)
-                    isPushed = true;
-                    finalTop = BEAM_TOP_Y_OFFSET - (BEAD_HEIGHT/2) + 7.5; // Adjusted to sit near the beam
-                } else {
-                    // Unpushed: Top of the section (pushed up)
-                    isPushed = false;
-                    finalTop = 10;
-                }
+            // --- Enforce Boundaries ---
+            if (draggingBead.section === 'top') {
+                const min = PADDING + BEAD_RADIUS;
+                const max = TOP_SECTION_HEIGHT - BEAD_RADIUS;
+                draggingBead.y = Math.max(min, Math.min(max, newY));
             } else {
-                // Earth Beads (Value 1)
-                const distanceToBeam = Math.abs(beadCenterY - BEAM_TOP_Y_OFFSET);
-                if (distanceToBeam < SNAP_THRESHOLD) {
-                    // Pushed: Bottom edge of bead is just above the beam's center (pushed up)
-                    isPushed = true;
-                    // The beads stack when pushed up
-                    const pushedBeads = Array.from(rod.querySelectorAll('.bottom-section .bead')).filter(b => b.dataset.pushed === 'true' && b !== bead);
-                    // Base position (just below the beam)
-                    let baseTop = BEAM_TOP_Y_OFFSET + (BEAD_HEIGHT/2) - 7.5;
-                    // Stack on top of other pushed beads
-                    finalTop = baseTop - (pushedBeads.length * BEAD_HEIGHT); 
-
-                } else {
-                    // Unpushed: Bottom of the section (pushed down)
-                    isPushed = false;
-                    finalTop = 5 + (parseInt(bead.dataset.beadIndex) * 35); // Initial position
-                }
+                const min = BOTTOM_SECTION_START_Y + BEAD_RADIUS;
+                const max = CANVAS_HEIGHT - PADDING - BEAD_RADIUS;
+                draggingBead.y = Math.max(min, Math.min(max, newY));
             }
 
-            // Apply the final snapped position
-            bead.style.top = `${finalTop}px`;
-            bead.dataset.pushed = isPushed;
-
-            // Recalculate all bead positions in the rod after a snap, in case of stacking changes
-            recalculateRodBeads(rodIndex);
+            drawAbacus();
         }
 
+        function handleEnd(e) {
+            if (!draggingBead) return;
+
+            // Determine if the bead is "pushed" based on its final position
+            if (draggingBead.section === 'top') {
+                // Snap point is the vertical center of the top section
+                const snapPoint = (HEAVEN_BEAD_STACK_Y + HEAVEN_BEAD_UNSTACK_Y) / 2;
+                draggingBead.pushed = draggingBead.y > snapPoint;
+            } else {
+                // Snap point is the vertical center of the bottom section
+                const snapPoint = (CANVAS_HEIGHT + BOTTOM_SECTION_START_Y) / 2;
+                draggingBead.pushed = draggingBead.y < snapPoint;
+            }
+
+            // Recalculate and snap all beads in the column
+            recalculateRodBeads(draggingBead.rodIndex);
+
+            draggingBead = null;
+            canvas.style.cursor = 'default';
+        }
+
+        function handleClick(e) {
+            if (isDragging) return; 
+
+            const pos = getMousePos(e);
+            
+            // Use the same robust hit detection as handleStart
+            const bead = rods.flat().sort((a, b) => b.y - a.y).find(b => b.isHit(pos.x, pos.y));
+            
+            if (bead) {
+                bead.pushed = !bead.pushed;
+                recalculateRodBeads(bead.rodIndex);
+            }
+        }
+
+        // --- FINAL POSITIONING AND VALUE CALCULATION ---
         function recalculateRodBeads(rodIndex) {
-            const rod = abacusContainer.querySelector(`.rod[data-rod-index="${rodIndex}"]`);
-            if (!rod) return;
+            const rodBeads = rods[rodIndex];
+            
+            let pushedBottomCount = 0; 
 
-            let rodTotalValue = 0;
-
-            // Recalculate Heaven Bead (Value 5)
-            const heavenBead = rod.querySelector('.top-section .bead');
-            if (heavenBead.dataset.pushed === 'true') {
-                rodTotalValue += 5;
-                // Ensure correct visual snap if it was toggled
-                heavenBead.style.top = `${BEAM_TOP_Y_OFFSET - (BEAD_HEIGHT/2) + 7.5}px`; 
+            // 1. Process Heaven Bead (Value 5)
+            const heavenBead = rodBeads.find(b => b.section === 'top');
+            if (heavenBead.pushed) {
+                heavenBead.y = HEAVEN_BEAD_STACK_Y; 
             } else {
-                 heavenBead.style.top = '10px';
+                heavenBead.y = HEAVEN_BEAD_UNSTACK_Y;
             }
 
-            // Recalculate Earth Beads (Value 1s) and stack
-            const earthBeads = Array.from(rod.querySelectorAll('.bottom-section .bead')).sort((a, b) => 
-                parseInt(a.dataset.beadIndex) - parseInt(b.dataset.beadIndex)
+            // 2. Process Earth Beads (Value 1) and Stacking
+            const earthBeads = rodBeads.filter(b => b.section === 'bottom').sort((a, b) => 
+                a.beadIndex - b.beadIndex
             );
 
-            let pushedCount = 0;
-            const baseTopPushed = BEAM_TOP_Y_OFFSET + (BEAD_HEIGHT/2) - 7.5;
-
+            // First pass: Count pushed beads
             earthBeads.forEach(bead => {
-                if (bead.dataset.pushed === 'true') {
-                    rodTotalValue += 1;
-                    // Stack them upwards starting from the beam
-                    bead.style.top = `${baseTopPushed - (pushedCount * BEAD_HEIGHT)}px`;
-                    pushedCount++;
-                } else {
-                    // Unpushed: Initial position
-                    bead.style.top = `${5 + (parseInt(bead.dataset.beadIndex) * 35)}px`;
-                }
+                if (bead.pushed) pushedBottomCount++;
             });
 
-            // Store the final rod value and update the display
-            rodValues[rodIndex] = rodTotalValue;
+            let currentPushedStack = 0;
+            let currentUnpushedStack = 0;
+
+            // Second pass: Apply final Y position based on stacking
+            earthBeads.forEach(bead => {
+                if (bead.pushed) {
+                    // Pushed: Stack up from the bottom of the beam
+                    bead.y = BOTTOM_SECTION_START_Y + BEAD_RADIUS + (currentPushedStack * EARTH_BEAD_STACK_UNIT);
+                    currentPushedStack++;
+                } else {
+                    // Unpushed: Stack down from the bottom frame (uses beadIndex for correct order)
+                    // (3 - bead.beadIndex) is used to map bead 0 to the highest position, bead 3 to the lowest
+                    bead.y = CANVAS_HEIGHT - PADDING - BEAD_RADIUS - ((3 - bead.beadIndex) * EARTH_BEAD_UNSTACK_UNIT);
+                    currentUnpushedStack++;
+                }
+            });
+            
             updateTotalValue();
+            drawAbacus();
+        }
+        
+        function recalculateAllBeads() {
+            for (let i = 0; i < NUM_RODS; i++) {
+                rods[i].forEach(bead => bead.pushed = false);
+                recalculateRodBeads(i);
+            }
+            updateTotalValue(); 
         }
 
-
-        // --- 4. UPDATE TOTAL VALUE DISPLAY ---
         function updateTotalValue() {
-            let totalValue = 0n; // Use BigInt for potentially large numbers
+            let totalValue = 0n;
             
-            // Loop through the rods from right (units) to left (highest power)
-            for (let i = 0; i < numRods; i++) {
-                // The rod on the far right is the unit (10^0), next is 10^1, etc.
-                const rodPower = numRods - 1 - i; 
-                const rodValue = rodValues[i];
-
-                // Calculate the contribution of this rod to the total
+            for (let i = 0; i < NUM_RODS; i++) {
+                const rodPower = NUM_RODS - 1 - i;
+                const rodBeads = rods[i];
+                let rodValue = rodBeads.reduce((sum, bead) => sum + (bead.pushed ? bead.value : 0), 0);
                 totalValue += BigInt(rodValue) * (10n ** BigInt(rodPower));
             }
 
-            // Display the number, formatted with commas for readability (optional)
             valueDisplay.textContent = totalValue.toLocaleString('en-US');
         }
 
-        // --- INITIALIZATION ---
-        window.onload = renderAbacus;
+        // --- EVENT LISTENERS ---
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('click', handleClick);
 
+        canvas.addEventListener('touchstart', handleStart);
+        canvas.addEventListener('touchmove', handleMove);
+        canvas.addEventListener('touchend', handleEnd);
+
+        // --- START ---
+        window.onload = initAbacus;
     </script>
 </body>
 </html>
